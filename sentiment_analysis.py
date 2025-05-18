@@ -165,56 +165,59 @@ def generate_visualizations(df):
 def analyze_trends(df):
     """Identify temporal patterns"""
     print("\n⏳ Analyzing trends over time...")
-    
-    # Convert date if needed
+
+    # Convert dates
     if not pd.api.types.is_datetime64_any_dtype(df['date']):
-        df['date'] = pd.to_datetime(df['date'])
-    
-    # Weekly sentiment trend 
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+
+    df = df.dropna(subset=['date'])  # Clean bad dates
+
+    # Weekly trend
     df['week'] = df['date'].dt.to_period('W')
     weekly_trend = df.groupby('week')['sentiment'].mean().reset_index()
+    weekly_trend['week'] = weekly_trend['week'].astype(str)
 
-    
-    print("\n📅 Event Impact Analysis")
-    try:
-        event_date = pd.to_datetime('2025-02-15')  # Replace with your event date
-        
-        if event_date < df['date'].min():
-            print(f"⚠️ Event date {event_date.date()} is BEFORE your data range ({df['date'].min().date()} to {df['date'].max().date()})")
-        elif event_date > df['date'].max():
-            print(f"⚠️ Event date {event_date.date()} is AFTER your data range ({df['date'].min().date()} to {df['date'].max().date()})")
-        else:
-            # Only execute event analysis if date is valid
-            df['pre_event'] = df['date'] < event_date
-            event_impact = df.groupby('pre_event')['sentiment'].agg(['mean', 'count'])
-            event_impact.rename(index={True: 'Before Event', False: 'After Event'}, inplace=True)
-            
-            print(f"\nSentiment Change Around {event_date.date()}:")
-            print(event_impact)
-            
-            # Visualization
-            plt.figure(figsize=(8,4))
-            sns.barplot(x=event_impact.index, y='mean', data=event_impact.reset_index())
-            plt.title(f"Sentiment Before/After {event_date.date()}")
-            plt.ylabel("Average Sentiment")
-            plt.savefig('event_sentiment_impact.png')
-            plt.show()
-            
-    except ValueError as e:
-        print(f"❌ Invalid date format: {str(e)}. Use YYYY-MM-DD")
-    
+    # Plot weekly sentiment
+    if not weekly_trend.empty:
+        plt.figure(figsize=(12, 6))
+        sns.lineplot(data=weekly_trend, x='week', y='sentiment', marker='o')
+        plt.title('Weekly Sentiment Trend')
+        plt.xticks(rotation=45)
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig('weekly_sentiment_trend.png')
+        plt.show()
+        print("✅ Saved weekly sentiment trend: weekly_sentiment_trend.png")
 
-    # Existing weekly trend visualization
-    plt.figure(figsize=(12, 6))
-    sns.lineplot(data=weekly_trend, x='week', y='sentiment', marker='o')
-    plt.title('Weekly Sentiment Trend')
-    plt.xticks(rotation=45)
-    plt.grid(True)
+   
+
+    # ==== Event Impact Analysis  ====
+    print("\n📅 Event Impact Analysis 2 (e.g., April Awareness Campaign)")
+    event_date_2 = pd.to_datetime('2025-04-01')
+    in_range_2 = df['date'].min() <= event_date_2 <= df['date'].max()
+
+    if not in_range_2:
+        print(f"⚠️ Event date {event_date_2.date()} is outside the dataset range: {df['date'].min().date()} to {df['date'].max().date()}")
+        print("📉 Still generating dummy event sentiment plot...")
+
+    df['pre_event_2'] = df['date'] < event_date_2
+    event_impact_2 = df.groupby('pre_event_2')['sentiment'].agg(['mean', 'count'])
+    event_impact_2.rename(index={True: 'Before Event', False: 'After Event'}, inplace=True)
+
+    print(f"\nSentiment Change Around {event_date_2.date()}:")
+    print(event_impact_2)
+
+    plt.figure(figsize=(8, 4))
+    sns.barplot(x=event_impact_2.index, y='mean', data=event_impact_2.reset_index())
+    plt.title(f"Sentiment Before/After {event_date_2.date()}")
+    plt.ylabel("Average Sentiment")
     plt.tight_layout()
-    plt.savefig('weekly_sentiment_trend.png')
+    plt.savefig('event_sentiment_impact_2.png')
     plt.show()
-    
+    print("✅ Saved event sentiment impact plot: event_sentiment_impact_2.png")
+
     return weekly_trend
+
 
 # ======================
 # Main Execution
@@ -249,3 +252,6 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("💾 Saved analyzed data to: sustainable_fashion_analyzed.csv")
     print("📊 Saved visualizations to: sustainable_fashion_analysis.png & weekly_sentiment_trend.png")
+    print("📅 Saved event impact analysis to: event_sentiment_impact.png")
+    print("="*60)
+    print("\nThank you for using the Sustainable Fashion Analysis Tool! 🌱")
